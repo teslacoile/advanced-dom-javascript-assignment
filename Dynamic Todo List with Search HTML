@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Todo List</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>✅ My Todo App</h1>
+
+        <div class="input-section">
+            <input type="text" id="todoInput" placeholder="Add a new todo...">
+            <button id="addBtn">Add</button>
+        </div>
+        
+        <div class="controls-section">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="🔍 Search todos...">
+            </div>
+            <div class="filter-options">
+                Filter: 
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="active">Active</button>
+                <button class="filter-btn" data-filter="completed">Completed</button>
+            </div>
+        </div>
+
+        <div class="stats-bar">
+            <p id="todoCounter">📝 Todo List (<span id="totalCount">0</span> total, <span id="completedCount">0</span> completed)</p>
+        </div>
+
+        <ul id="todoList" class="todo-list">
+            </ul>
+
+        <p id="noResults" class="no-results-message">No todos match your search.</p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
