@@ -1,0 +1,157 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('contactForm');
+    const nameInput = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const messageInput = document.getElementById('message');
+    const nameError = document.getElementById('nameError');
+    const emailError = document.getElementById('emailError');
+    const messageError = document.getElementById('messageError');
+    const successMessage = document.getElementById('successMessage');
+    const messageList = document.getElementById('messageList');
+    const emptyState = document.getElementById('emptyState');
+
+    const DEBOUNCE_DELAY = 300;
+    let nameTimeout, emailTimeout, messageTimeout;
+
+    // --- Validation Functions ---
+    const validateName = () => {
+        if (nameInput.value.trim().length < 2) {
+            nameError.textContent = 'Name must be at least 2 characters.';
+            return false;
+        }
+        nameError.textContent = '';
+        return true;
+    };
+
+    const validateEmail = () => {
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(emailInput.value.trim())) {
+            emailError.textContent = 'Please enter a valid email address.';
+            return false;
+        }
+        emailError.textContent = '';
+        return true;
+    };
+
+    const validateMessage = () => {
+        if (messageInput.value.trim().length < 10) {
+            messageError.textContent = 'Message must be at least 10 characters.';
+            return false;
+        }
+        messageError.textContent = '';
+        return true;
+    };
+
+    // --- Debounce Function ---
+    const debounce = (func, delay) => {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    };
+
+    // --- Event Listeners for Real-time, Debounced Validation ---
+    nameInput.addEventListener('input', debounce(validateName, DEBOUNCE_DELAY));
+    emailInput.addEventListener('input', debounce(validateEmail, DEBOUNCE_DELAY));
+    messageInput.addEventListener('input', debounce(validateMessage, DEBOUNCE_DELAY));
+
+    // --- Message History Functions ---
+    const getMessages = () => {
+        try {
+            const messages = localStorage.getItem('messages');
+            return messages ? JSON.parse(messages) : [];
+        } catch (e) {
+            console.error('Error reading from localStorage:', e);
+            return [];
+        }
+    };
+
+    const saveMessages = (messages) => {
+        try {
+            localStorage.setItem('messages', JSON.stringify(messages));
+        } catch (e) {
+            console.error('Error saving to localStorage:', e);
+        }
+    };
+
+    const renderMessages = () => {
+        const messages = getMessages();
+        messageList.innerHTML = '';
+        if (messages.length === 0) {
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+            messages.forEach((msg, index) => {
+                const li = document.createElement('li');
+                li.className = 'message-item';
+                li.dataset.index = index;
+                li.innerHTML = `
+                    <h4>From: ${msg.name} (${msg.email})</h4>
+                    <p><strong>Message:</strong> ${msg.message}</p>
+                    <span class="timestamp">Sent: ${new Date(msg.timestamp).toLocaleString()}</span>
+                    <button class="delete-btn" aria-label="Delete message" data-index="${index}">&times;</button>
+                `;
+                messageList.appendChild(li);
+            });
+        }
+    };
+
+    const addMessage = (name, email, message) => {
+        const messages = getMessages();
+        const newMessage = {
+            name,
+            email,
+            message,
+            timestamp: new Date().toISOString()
+        };
+        messages.unshift(newMessage); // Add to the beginning
+        saveMessages(messages);
+        renderMessages();
+    };
+
+    // --- Event Delegation for Deleting Messages ---
+    messageList.addEventListener('click', (event) => {
+        if (event.target.classList.contains('delete-btn')) {
+            const index = event.target.dataset.index;
+            const messages = getMessages();
+            messages.splice(index, 1);
+            saveMessages(messages);
+            renderMessages();
+        }
+    });
+
+    // --- Form Submission Handler ---
+    form.addEventListener('submit', (event) => {
+        event.preventDefault(); // Prevent page reload
+
+        const isNameValid = validateName();
+        const isEmailValid = validateEmail();
+        const isMessageValid = validateMessage();
+
+        if (isNameValid && isEmailValid && isMessageValid) {
+            // All fields are valid, process submission
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+            const message = messageInput.value.trim();
+            
+            addMessage(name, email, message);
+
+            // Show success message
+            successMessage.textContent = '✅ Message sent successfully!';
+            form.reset();
+            
+            setTimeout(() => {
+                successMessage.textContent = '';
+            }, 3000);
+        } else {
+            // Force validation on submit if not already shown by debounce
+            validateName();
+            validateEmail();
+            validateMessage();
+        }
+    });
+
+    // Initial render of messages on page load
+    renderMessages();
+});
