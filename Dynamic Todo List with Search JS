@@ -1,0 +1,167 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Elements ---
+    const todoInput = document.getElementById('todoInput');
+    const addBtn = document.getElementById('addBtn');
+    const todoList = document.getElementById('todoList');
+    const searchInput = document.getElementById('searchInput');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const totalCountSpan = document.getElementById('totalCount');
+    const completedCountSpan = document.getElementById('completedCount');
+    const noResultsMessage = document.getElementById('noResults');
+
+    let currentFilter = 'all';
+    let todos = [];
+    const DEBOUNCE_DELAY = 400;
+    let searchTimeout;
+
+    // --- Data Persistence (localStorage) ---
+    const getTodosFromStorage = () => {
+        try {
+            const storedTodos = localStorage.getItem('todos');
+            return storedTodos ? JSON.parse(storedTodos) : [];
+        } catch (error) {
+            console.error('Failed to load todos from localStorage:', error);
+            return [];
+        }
+    };
+
+    const saveTodosToStorage = () => {
+        try {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        } catch (error) {
+            console.error('Failed to save todos to localStorage:', error);
+        }
+    };
+
+    // --- Core Todo Management Functions ---
+    const renderTodos = () => {
+        const searchText = searchInput.value.toLowerCase();
+        let filteredTodos = todos;
+
+        // Apply filter
+        if (currentFilter === 'active') {
+            filteredTodos = todos.filter(todo => !todo.completed);
+        } else if (currentFilter === 'completed') {
+            filteredTodos = todos.filter(todo => todo.completed);
+        }
+
+        // Apply search
+        if (searchText) {
+            filteredTodos = filteredTodos.filter(todo =>
+                todo.text.toLowerCase().includes(searchText)
+            );
+        }
+
+        // Render based on filtered results
+        todoList.innerHTML = '';
+        if (filteredTodos.length === 0) {
+            noResultsMessage.style.display = 'block';
+        } else {
+            noResultsMessage.style.display = 'none';
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+                li.dataset.id = todo.id;
+                li.innerHTML = `
+                    <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
+                    <span class="todo-text">${todo.text}</span>
+                    <button class="delete-btn">&times;</button>
+                `;
+                todoList.appendChild(li);
+            });
+        }
+        
+        updateCounters();
+    };
+
+    const addTodo = (text) => {
+        const newTodo = {
+            id: Date.now(),
+            text,
+            completed: false,
+            createdAt: new Date().toISOString()
+        };
+        todos.unshift(newTodo);
+        saveTodosToStorage();
+        renderTodos();
+    };
+
+    const toggleTodoCompletion = (id) => {
+        const todo = todos.find(t => t.id == id);
+        if (todo) {
+            todo.completed = !todo.completed;
+            saveTodosToStorage();
+            renderTodos();
+        }
+    };
+
+    const deleteTodo = (id) => {
+        todos = todos.filter(t => t.id != id);
+        saveTodosToStorage();
+        renderTodos();
+    };
+
+    const updateCounters = () => {
+        totalCountSpan.textContent = todos.length;
+        const completedCount = todos.filter(t => t.completed).length;
+        completedCountSpan.textContent = completedCount;
+    };
+
+    // --- Event Listeners ---
+
+    // Add Todo button
+    addBtn.addEventListener('click', () => {
+        const text = todoInput.value.trim();
+        if (text) {
+            addTodo(text);
+            todoInput.value = '';
+        }
+    });
+    
+    // Add todo with Enter key
+    todoInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            addBtn.click();
+        }
+    });
+
+    // Debounced Search
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            renderTodos();
+        }, DEBOUNCE_DELAY);
+    });
+
+    // Filter Buttons
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentFilter = e.target.dataset.filter;
+            renderTodos();
+        });
+    });
+
+    // Event Delegation for Todo Interactions
+    todoList.addEventListener('click', (e) => {
+        const todoItem = e.target.closest('.todo-item');
+        if (!todoItem) return;
+
+        const todoId = todoItem.dataset.id;
+
+        if (e.target.classList.contains('todo-checkbox')) {
+            toggleTodoCompletion(todoId);
+        } else if (e.target.classList.contains('delete-btn')) {
+            deleteTodo(todoId);
+        }
+    });
+
+    // --- Initialization ---
+    const init = () => {
+        todos = getTodosFromStorage();
+        renderTodos();
+    };
+
+    init();
+});
